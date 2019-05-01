@@ -20,7 +20,7 @@ const defaultWindowOptions: WindowOption = {
     defaultTop: 200
 };
 
-export interface ContextMenuItem<T extends {}={}> {
+export interface ContextMenuItem<T extends {} = {}> {
     text: string;
     children?: ContextMenuItem[];
     payload?: T;
@@ -32,8 +32,7 @@ interface ContextMenuParameters {
     isRoot?: boolean;
 }
 
-// tslint:disable-next-line:no-any
-type clickCallback<T extends {}={}> = (payload: T) => any;
+type clickCallback<T extends {} = {}> = (payload: T) => any;
 
 class ContextMenu {
     private _windowV1: fin.OpenFinWindow;
@@ -91,7 +90,10 @@ class ContextMenu {
     }
 
 
-    // Promise based v1 window creation
+    /**
+     * Promise based v1 window creator.
+     * @param options Window options.
+     */
     private static async createWindow(options: WindowOption): Promise<fin.OpenFinWindow> {
         return new Promise((resolve, reject) => {
             const win = new fin.desktop.Window(options, () => {
@@ -105,11 +107,8 @@ class ContextMenu {
     /**
      * Factory function for creating context menus.
      *
-     * @static
-     * @param {string} [name]
-     * @param {boolean} [isRoot=false]
-     * @returns
-     * @memberof ContextMenu
+     * @param name Name of the window.
+     * @param isRoot If true creates a root ContextMenu window.
      */
     public static async create(name?: string, isRoot: boolean = false) {
         name = name || (Math.random() * 1000).toString();
@@ -118,11 +117,8 @@ class ContextMenu {
     }
 
     /**
-     * Check if [menuItems] has an children.
-     *
-     * @param {ContextMenuItem[]} menuItems
-     * @returns
-     * @memberof ContextMenu
+     * Check if menuItems has children.
+     * @param menuItems List of menu items.
      */
     public childCheck(menuItems: ContextMenuItem[]) {
         return menuItems.some(item => item.children !== undefined);
@@ -131,11 +127,10 @@ class ContextMenu {
     /**
      * Set the context on the context menu.
      *
-     * @param {ContextMenuItem[]} menuItems
-     * @param {clickCallback} clickCallback The function that will be called when an item has been clicked.
-     * @memberof ContextMenu
+     * @param menuItems List of menu items.
+     * @param clickCallback The function that will be called when an item has been clicked.
      */
-    public async setContent<T extends {}={}>(menuItems: ContextMenuItem[], clickCallback: clickCallback<T>) {
+    public async setContent<T extends {} = {}>(menuItems: ContextMenuItem[], clickCallback: clickCallback<T>) {
         // Check that there is any children if so make a child node
         let child = await this._child;
         if (this.childCheck(menuItems) && child === undefined) {
@@ -193,8 +188,7 @@ class ContextMenu {
     /**
      * Set the bounds of the window.
      *
-     * @param {Partial<Bounds>} newBounds
-     * @memberof ContextMenu
+     * @param newBounds The new bounds for the window.
      */
     public async setBounds(newBounds: Partial<Bounds>) {
         const bounds = await this._window.getBounds();
@@ -203,8 +197,6 @@ class ContextMenu {
 
     /**
      * Close this window and all its children.
-     *
-     * @memberof ContextMenu
      */
     public async destroy() {
         if (this._child) {
@@ -216,7 +208,6 @@ class ContextMenu {
     /**
      * Hide the window and all child windows.
      *
-     * @memberof ContextMenu
      */
     public async hide() {
         const animateOptions = {
@@ -232,11 +223,10 @@ class ContextMenu {
 
 
     /**
-     * Show the window at the given [point].
+     * Show the window at the given point.
      *
-     * @param {Point} point
-     * @param {boolean} [focus]
-     * @memberof ContextMenu
+     * @param point The top-left position to set the window to.
+     * @param focus Sets the window to be focused when shown.
      */
     public async showAt(point: Point, focus?: boolean) {
         const animateOptions = {
@@ -266,6 +256,12 @@ window.onunload = async (event) => {
     await contextMenu.destroy();
 };
 
+/**
+ * Display a ContextMenu.
+ * @param position Top-left position to show the window at.
+ * @param items List of menu items.
+ * @param handleClick The click handler for menu items.
+ */
 export async function showContextMenu<T extends {}>(position: Point, items: ContextMenuItem<T>[], handleClick: (payload: T) => void) {
     if (!contextMenu) {
         contextMenu = await ContextMenu.create('root', true);

@@ -12,9 +12,6 @@ ContextChannelSelector.defaultProps = {
     float: false
 };
 
-/**
- * Context channel ui
-*/
 export function ContextChannelSelector(props: ContextChannelSelectorProps): React.ReactElement {
     const {float} = props;
     const [currentChannelId, setCurrentChannelId] = React.useState<ChannelId>(GLOBAL_CHANNEL_ID);
@@ -69,10 +66,6 @@ export function ContextChannelSelector(props: ContextChannelSelectorProps): Reac
     );
 }
 
-/**
- *
- * @param num
- */
 function numberToHex(num: number) {
     return num.toString(16).padStart(6, '0');
 }

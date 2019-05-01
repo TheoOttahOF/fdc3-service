@@ -13,10 +13,7 @@ import '../../../res/demo/css/w3.css';
 interface AppProps {
     phoneNumber?: string;
 }
-/**
- * Dialer App
- * @param props
- */
+
 export function DialerApp(props: AppProps): React.ReactElement {
     const [inCall, setInCall] = React.useState(false);
     const [phoneNumber, setPhoneNumber] = React.useState<string>('');
