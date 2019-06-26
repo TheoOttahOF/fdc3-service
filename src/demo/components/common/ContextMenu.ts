@@ -95,7 +95,7 @@ class ContextMenu {
      * @param options Window options.
      */
     private static async createWindow(options: WindowOption): Promise<fin.OpenFinWindow> {
-        return new Promise((resolve, reject) => {
+        return new Promise<fin.OpenFinWindow>((resolve, reject) => {
             const win = new fin.desktop.Window(options, () => {
                 resolve(win);
             }, (err) => {
@@ -246,7 +246,7 @@ class ContextMenu {
         const style = this._nativeWindow.document.createElement('link');
         style.rel = 'stylesheet';
         style.href = location.origin + '/demo/css/context-menu.css';
-        this._nativeWindow.document.head.appendChild(style);
+        this._nativeWindow.document.head!.appendChild(style);
     }
 }
 
