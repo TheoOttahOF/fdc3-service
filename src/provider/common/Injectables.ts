@@ -14,6 +14,7 @@ enum Injectable {
     EVENT_HANDLER,
     MODEL,
     RESOLVER,
+    CONFIG_STORE
 }
 
 type InjectableMap = {
