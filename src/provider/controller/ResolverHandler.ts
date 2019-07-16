@@ -8,6 +8,7 @@ import {AppDirectory} from '../model/AppDirectory';
 import {Model} from '../model/Model';
 import {Intent, Application} from '../../client/main';
 import {RESOLVER_IDENTITY} from '../utils/constants';
+import {AppWindow} from '../model/AppWindow';
 
 import {AsyncInit} from './AsyncInit';
 
@@ -31,6 +32,10 @@ export interface ResolverArgs {
     applications: Application[];
 }
 
+export interface ResolverUpdate {
+    application: Application;
+}
+
 /**
  * Data returned by app resolver when the user has made a selection
  */
@@ -45,6 +50,7 @@ export class ResolverHandler extends AsyncInit {
 
     private _window!: _Window;
     private _channel!: ChannelClient;
+    private _currentIntent: Intent | null = null;
 
     constructor(
         @inject(Inject.APP_DIRECTORY) directory: AppDirectory,
@@ -53,6 +59,32 @@ export class ResolverHandler extends AsyncInit {
         super();
         this._directory = directory;
         this._model = model;
+        this._model.onWindowAdded.add(this.onWindowAdded, this);
+        this._model.onWindowRemoved.add(this.onWindowRemoved, this);
+    }
+
+    private onWindowRemoved(appWindow: AppWindow): void {
+        if (!this._currentIntent) {
+            return;
+        }
+        if (appWindow.hasIntentListener(this._currentIntent!.type)) {
+            const payload: ResolverUpdate = {application: appWindow.appInfo};
+            console.log('NEW DISPATCH');
+            this._channel.dispatch('remove', payload);
+        }
+    }
+
+    private onWindowAdded(appWindow: AppWindow): void {
+        console.info('NEW WINDOW ADDED', appWindow.intentListeners);
+        if (!this._currentIntent) {
+            return;
+        }
+        console.log('WINDOW ADDED');
+        if (appWindow.hasIntentListener(this._currentIntent!.type)) {
+            const payload: ResolverUpdate = {application: appWindow.appInfo};
+            console.log('NEW DISPATCH');
+            this._channel.dispatch('new', payload);
+        }
     }
 
     /**
@@ -94,12 +126,12 @@ export class ResolverHandler extends AsyncInit {
             intent,
             applications: await this._model.getApplicationsForIntent(intent.type)
         };
-
+        this._currentIntent = intent;
         await this._window.show();
         await this._window.setAsForeground();
         const selection: ResolverResult = await this._channel.dispatch('resolve', msg).catch(console.error);
+        this._currentIntent = null;
         await this._window.hide();
-
         return selection;
     }
 

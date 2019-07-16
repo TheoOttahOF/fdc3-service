@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import {Application} from '../../../client/directory';
-import {ResolverArgs, ResolverResult} from '../../controller/ResolverHandler';
+import {ResolverArgs, ResolverResult, ResolverUpdate} from '../../controller/ResolverHandler';
 
 import {AppList} from './AppList';
 
@@ -23,6 +23,13 @@ export function Resolver(): React.ReactElement {
     React.useEffect(() => {
         fin.InterApplicationBus.Channel.create('resolver').then(channel => {
             Object.assign(window, {channel});
+
+            channel.register('new', (newApp: ResolverUpdate) => {
+                console.log('NEW', newApp);
+                const newList = [...applications, newApp.application];
+                console.log(newList);
+                setApplications(newList);
+            });
 
             channel.register('resolve', async (args: ResolverArgs) => {
                 setApplications(args.applications);
