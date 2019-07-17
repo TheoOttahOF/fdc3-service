@@ -5,10 +5,12 @@ import {AppWindow} from '../../src/provider/model/AppWindow';
 import {Application} from '../../src/client/directory';
 
 import * as fdc3Remote from './utils/fdc3RemoteExecution';
+import {fin} from './utils/fin';
 import {OFPuppeteerBrowser} from './utils/ofPuppeteer';
-import {setupTeardown, quitApps} from './utils/common';
-import {testManagerIdentity, testAppInDirectory1} from './constants';
+import {setupTeardown, quitApps, TestAppData} from './utils/common';
+import {testManagerIdentity, testAppInDirectory1, testAppWithPreregisteredListeners1, testAppNotInDirectory1} from './constants';
 import {RemoteChannel} from './utils/RemoteChannel';
+import {delay} from './utils/delay';
 
 setupTeardown();
 
@@ -17,55 +19,98 @@ const TEST_INTENT = 'TestIntent';
 let redChannel: RemoteChannel;
 let blueChannel: RemoteChannel;
 
-afterAll(async () => {
-    await quitApps(testAppInDirectory1);
-});
-
 describe('Disconnecting windows', () => {
-    beforeEach(async () => {
-        await fdc3Remote.open(testManagerIdentity, testAppInDirectory1.name);
-        redChannel = await fdc3Remote.getChannelById(testAppInDirectory1, 'red');
-        blueChannel = await fdc3Remote.getChannelById(testAppInDirectory1, 'blue');
+    describe('Directory Apps', () => {
+        async function open(app: TestAppData) {
+            await fdc3Remote.open(testManagerIdentity, app.name);
+        }
+
+        testSuite('When closing app', testAppInDirectory1, open, async (app) => {
+            await quitApps(app);
+        });
+        testSuite('When closing app with preregistered listeners', testAppWithPreregisteredListeners1, open, async (app) => {
+            await quitApps(app);
+        });
+        testSuite('When app navigates away', testAppInDirectory1, open, async (app) => {
+            await navigateTo(app, 'about:blank');
+        });
+        testSuite('When app with pregistered listeners navigates away', testAppWithPreregisteredListeners1, open, async (app) => {
+            await navigateTo(app, 'about:blank');
+        });
     });
 
-    describe('When closing an application', () => {
+    describe('Non Directory Apps', () => {
+        async function open() {
+            await fin.Application.startFromManifest(testAppNotInDirectory1.manifestUrl);
+        }
+
+        testSuite('When app closes', testAppNotInDirectory1, open, async (app) => {
+            await quitApps(app);
+        });
+        testSuite('When app navigates away', testAppNotInDirectory1, open, async (app) => {
+            await navigateTo(app, 'about:blank');
+        });
+    });
+});
+
+async function testSuite(
+    title: string,
+    application: TestAppData,
+    open: (app: TestAppData) => Promise<void>,
+    disconnectMethod: (app: TestAppData) => Promise<void>
+) {
+    describe(title, () => {
         beforeEach(async () => {
-            await fdc3Remote.addContextListener(testAppInDirectory1);
-            await fdc3Remote.addEventListener(testAppInDirectory1, 'channel-changed');
-            await fdc3Remote.addIntentListener(testAppInDirectory1, TEST_INTENT);
-            await redChannel.join(testAppInDirectory1);
+            await open(application);
+            redChannel = await fdc3Remote.getChannelById(application, 'red');
+            blueChannel = await fdc3Remote.getChannelById(application, 'blue');
+            await fdc3Remote.addContextListener(application);
+            await fdc3Remote.addEventListener(application, 'channel-changed');
+            await fdc3Remote.addIntentListener(application, TEST_INTENT);
+            await redChannel.join(application);
             await blueChannel.addContextListener();
             await blueChannel.addEventListener('window-added');
-            await quitApps(testAppInDirectory1);
+
+            await disconnectMethod(application);
+        });
+
+        afterEach(async () => {
+            await quitApps(application);
         });
 
         it('The window is removed from the model', async () => {
-            expect(await getWindow(testAppInDirectory1)).toBeNull();
+            expect(await getWindow(application)).toBeNull();
         });
 
         it('Intent listeners are removed', async () => {
             const intents = await getIntentListeners(TEST_INTENT);
-            expect(intents).toEqual([]);
+            expect(intents.length).toEqual(0);
         });
 
         describe('Channels', () => {
-            it('Channel has been left', async () => {
-                expect(await windowIsNotInChannels(testAppInDirectory1)).toEqual(true);
+            it('All channels have been left', async () => {
+                expect(await windowIsNotInChannels(application)).toEqual(true);
             });
 
             it('Context listeners are removed', async () => {
                 const contextListeners = await getChannelContextListeners(blueChannel);
-                expect(contextListeners).toEqual([]);
+                expect(contextListeners.length).toEqual(0);
             });
 
             it.todo('Event listeners are removed');
         });
     });
+}
 
-    describe('When navigating away from the page', () => {
 
-    });
-});
+async function navigateTo(target: Identity, url: string): Promise<void>{
+    await ofBrowser.executeOnWindow(target, async function (location) {
+        const window = this.fin.Window.getCurrentSync();
+        await window.navigate(location);
+    }, url);
+
+    await delay(300); // wait for page reload
+}
 
 /**
  * Only get windows that are not ignored
