@@ -8,7 +8,7 @@ import * as fdc3Remote from './utils/fdc3RemoteExecution';
 import {fin} from './utils/fin';
 import {OFPuppeteerBrowser} from './utils/ofPuppeteer';
 import {setupTeardown, quitApps, TestAppData} from './utils/common';
-import {testManagerIdentity, testAppInDirectory1, testAppWithPreregisteredListeners1, testAppNotInDirectory1} from './constants';
+import {testManagerIdentity, testAppInDirectory1, testAppWithPreregisteredListeners1, testAppNotInDirectory1, testAppNotFdc3} from './constants';
 import {RemoteChannel} from './utils/RemoteChannel';
 import {delay} from './utils/delay';
 
@@ -18,6 +18,7 @@ const ofBrowser = new OFPuppeteerBrowser();
 const TEST_INTENT = 'TestIntent';
 let redChannel: RemoteChannel;
 let blueChannel: RemoteChannel;
+type EventType = 'window-added' | 'window-removed';
 
 describe('Disconnecting windows', () => {
     describe('Directory Apps', () => {
@@ -25,15 +26,18 @@ describe('Disconnecting windows', () => {
             await fdc3Remote.open(testManagerIdentity, app.name);
         }
 
-        testSuite('When closing app', testAppInDirectory1, open, async (app) => {
+        testSuite('When app is closed', testAppInDirectory1, open, async (app) => {
             await quitApps(app);
         });
-        testSuite('When closing app with preregistered listeners', testAppWithPreregisteredListeners1, open, async (app) => {
+
+        testSuite('When app is closed with preregistered listeners', testAppWithPreregisteredListeners1, open, async (app) => {
             await quitApps(app);
         });
+
         testSuite('When app navigates away', testAppInDirectory1, open, async (app) => {
             await navigateTo(app, 'about:blank');
         });
+
         testSuite('When app with pregistered listeners navigates away', testAppWithPreregisteredListeners1, open, async (app) => {
             await navigateTo(app, 'about:blank');
         });
@@ -44,9 +48,10 @@ describe('Disconnecting windows', () => {
             await fin.Application.startFromManifest(testAppNotInDirectory1.manifestUrl);
         }
 
-        testSuite('When app closes', testAppNotInDirectory1, open, async (app) => {
+        testSuite('When app is closed', testAppNotInDirectory1, open, async (app) => {
             await quitApps(app);
         });
+
         testSuite('When app navigates away', testAppNotInDirectory1, open, async (app) => {
             await navigateTo(app, 'about:blank');
         });
@@ -97,11 +102,13 @@ async function testSuite(
                 expect(contextListeners.length).toEqual(0);
             });
 
-            it.todo('Event listeners are removed');
+            it('Event listeners are removed', async () => {
+                const eventListeners = await getChannelEventListeners(blueChannel, 'window-added');
+                expect(eventListeners.length).toEqual(0);
+            });
         });
     });
 }
-
 
 async function navigateTo(target: Identity, url: string): Promise<void>{
     await ofBrowser.executeOnWindow(target, async function (location) {
@@ -112,9 +119,6 @@ async function navigateTo(target: Identity, url: string): Promise<void>{
     await delay(300); // wait for page reload
 }
 
-/**
- * Only get windows that are not ignored
-*/
 async function getWindow(identity: Identity): Promise<AppWindow | null> {
     return ofBrowser.executeOnProvider(function (id: Identity): AppWindow | null {
         return this.model.getWindow(id);
@@ -133,8 +137,6 @@ async function getChannelContextListeners(remoteChannel: RemoteChannel): Promise
         return this.channelHandler.getWindowsListeningForContextsOnChannel(channel);
     }, remoteChannel.channel.id);
 }
-
-type EventType = 'window-added' | 'window-removed';
 
 async function getChannelEventListeners(remoteChannel: RemoteChannel, eventType: EventType): Promise<AppWindow[]> {
     return ofBrowser.executeOnProvider(function (id: string, event: EventType): AppWindow[] {
