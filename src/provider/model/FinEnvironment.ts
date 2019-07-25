@@ -166,6 +166,7 @@ class FinAppWindow implements AppWindow {
     private readonly _appInfo: Application;
     private readonly _window: Window;
     private readonly _appWindowNumber: number;
+    private readonly _persist?: boolean;
 
     private readonly _creationTime: number | undefined;
 
@@ -175,12 +176,12 @@ class FinAppWindow implements AppWindow {
 
     private readonly _onIntentListenerAdded: Signal1<IntentType> = new Signal1();
 
-    constructor(identity: Identity, appInfo: Application, channel: ContextChannel, creationTime: number | undefined, appWindowNumber: number) {
+    constructor(identity: Identity, appInfo: Application, channel: ContextChannel, creationTime: number | undefined, appWindowNumber: number, persist = false) {
         this._id = getId(identity);
         this._window = fin.Window.wrapSync(identity);
         this._appInfo = appInfo;
         this._appWindowNumber = appWindowNumber;
-
+        this._persist = persist || false;
         this._creationTime = creationTime;
 
         this._intentListeners = new Map();
@@ -212,6 +213,10 @@ class FinAppWindow implements AppWindow {
 
     public get intentListeners(): ReadonlyArray<string> {
         return Object.keys(this._intentListeners);
+    }
+
+    public get persist(): boolean {
+        return this._persist || false;
     }
 
     public hasIntentListener(intentName: string): boolean {

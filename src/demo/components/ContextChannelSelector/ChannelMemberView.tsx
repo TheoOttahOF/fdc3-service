@@ -32,7 +32,10 @@ export function ContextChannelView(props: ChannelViewProps): React.ReactElement 
     React.useEffect(() => {
         setInfo(channel);
         console.log('Redo');
-        addEventListener('channel-changed', () => {
+        addEventListener('channel-changed', (event) => {
+            console.log('EVENT', event);
+            if (event.channel)
+                event.channel.getMembers().then(result => console.log);
             setInfo(channel);
         });
     }, [channel]);

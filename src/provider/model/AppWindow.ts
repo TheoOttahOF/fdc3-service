@@ -19,6 +19,8 @@ export interface AppWindow {
 
     appWindowNumber: number;
 
+    persist: boolean;
+
     channel: ContextChannel;
 
     intentListeners: ReadonlyArray<string>;

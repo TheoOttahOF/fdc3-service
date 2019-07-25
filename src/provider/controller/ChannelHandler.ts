@@ -56,7 +56,7 @@ export class ChannelHandler {
         return this._model.windows.filter(window => window.hasChannelEventListener(channel, eventType));
     }
 
-    public joinChannel(appWindow: AppWindow, channel: ContextChannel): void {
+    public joinChannel(appWindow: AppWindow, channel: ContextChannel, persist = false): void {
         const previousChannel = appWindow.channel;
 
         if (previousChannel !== channel) {
