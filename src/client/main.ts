@@ -71,7 +71,7 @@ export interface ContextListener {
 
 export interface IntentListener {
     intent: string;
-    handler: (context: Context) => any;
+    handler: (context: Context) => unknown;
     /**
      * Unsubscribe the listener object.
      */
