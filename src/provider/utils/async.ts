@@ -86,8 +86,8 @@ export function allowReject<T>(promise: Promise<T>): Promise<T> {
  * @param predicate Test against `items`
  */
 export async function raceUntilTrue<T>(items: T[], predicate: (v?: T) => boolean): Promise<T | undefined> {
-    let promisesCompleted = 0;
-    let errors = 0;
+    let promisesCompleted: number = 0;
+    let errors: number = 0;
     const valueFound = new DeferredPromise<T | undefined>();
 
     const handleResolve = async (value?: T): Promise<void> => {
@@ -103,7 +103,7 @@ export async function raceUntilTrue<T>(items: T[], predicate: (v?: T) => boolean
     const completeCheck = async (): Promise<void> => {
         promisesCompleted++;
         if (items.length === promisesCompleted) {
-            if (items.length === errors) {
+            if (items.length === errors && items.length !== 0) {
                 throw new Error('All promises rejected');
             } else {
                 valueFound.resolve(undefined);

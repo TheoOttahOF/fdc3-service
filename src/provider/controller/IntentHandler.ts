@@ -119,10 +119,10 @@ export class IntentHandler {
     private async fireIntent(intent: Intent, appInfo: Application): Promise<IntentResolution> {
         await this._model.ensureRunning(appInfo);
         const appWindows = await this._model.expectWindowsForApp(appInfo);
-        const promises = appWindows.map(async (window: AppWindow): Promise<any> => {
-            if (await window.isReadyToReceiveIntent(intent.type)) {
+        const promises = appWindows.map(async (appWindow: AppWindow): Promise<any> => {
+            if (await appWindow.isReadyToReceiveIntent(intent.type)) {
                 const payload: ReceiveIntentPayload = {context: intent.context, intent: intent.type};
-                return this._apiHandler.dispatch(window.identity, APIToClientTopic.RECEIVE_INTENT, payload);
+                return this._apiHandler.dispatch(appWindow.identity, APIToClientTopic.RECEIVE_INTENT, payload);
             } else {
                 throw new Error(`${appInfo.name} not ready to recieve intents.`);
             }
