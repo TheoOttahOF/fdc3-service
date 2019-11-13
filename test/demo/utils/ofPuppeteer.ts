@@ -52,9 +52,9 @@ export interface TestChannelTransport {
 }
 
 export class OFPuppeteerBrowser {
-    private _pageIdentityCache: Map<Page, Identity>;
-    private _identityPageCache: Map<string, Page>;
-    private _mountedFunctionCache: Map<Page, Map<Function, JSHandle>>;
+    private readonly _pageIdentityCache: Map<Page, Identity>;
+    private readonly _identityPageCache: Map<string, Page>;
+    private readonly _mountedFunctionCache: Map<Page, Map<Function, JSHandle>>;
 
     private readonly _browser: Browser;
 
@@ -109,7 +109,7 @@ export class OFPuppeteerBrowser {
             return this._pageIdentityCache.get(page);
         }
 
-        const identity: Identity | undefined = await page.evaluate(function(this: TestWindowContext): Identity | undefined {
+        const identity: Identity | undefined = await page.evaluate(function (this: TestWindowContext): Identity | undefined {
             // Could be devtools or other non-fin-enabled windows so need a guard
             if (!fin) {
                 return undefined;
@@ -130,7 +130,7 @@ export class OFPuppeteerBrowser {
     public async getOrMountRemoteFunction(executionTarget: Identity, fn: AnyFunction): Promise<JSHandle> {
         const page = await this.getPage(executionTarget);
         if (!page) {
-            throw new Error('could not find specified executionTarget: ' + JSON.stringify(executionTarget));
+            throw new Error(`could not find specified executionTarget: ${JSON.stringify(executionTarget)}`);
         }
         const cachedHandle = this.getRemoteFunctionHandle(page, fn);
         if (cachedHandle) {
@@ -138,7 +138,7 @@ export class OFPuppeteerBrowser {
         } else {
             const name = uuidv4();
             await page.exposeFunction(name, fn);
-            const newHandle = await page.evaluateHandle(function(this: {[k: string]: AnyFunction}, remoteName) {
+            const newHandle = await page.evaluateHandle(function (this: {[k: string]: AnyFunction}, remoteName) {
                 return this[remoteName];
             }, name);
             if (!this._mountedFunctionCache.get(page)) {
@@ -154,7 +154,7 @@ export class OFPuppeteerBrowser {
     }
 
     public async executeOnWindow<T extends any[], R, C = TestWindowContext>(executionTarget: Identity, fn: (this: C, ...args: T) => R, ...args: T):
-        Promise<R> {
+    Promise<R> {
         const page = await this.getPage(executionTarget);
         if (!page) {
             throw new Error('could not find specified executionTarget');

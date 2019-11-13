@@ -69,7 +69,7 @@ export async function broadcast(executionTarget: Identity, context: Context): Pr
 }
 
 export async function raiseIntent(executionTarget: Identity, intent: IntentType, context: Context, target?: string): Promise<IntentResolution> {
-    return ofBrowser.executeOnWindow(executionTarget, async function(this: TestWindowContext, payload: RaiseIntentPayload): Promise<IntentResolution> {
+    return ofBrowser.executeOnWindow(executionTarget, async function (this: TestWindowContext, payload: RaiseIntentPayload): Promise<IntentResolution> {
         return this.fdc3.raiseIntent(payload.intent, payload.context, payload.target).catch(this.errorHandler);
     }, {intent, context, target}).catch(handlePuppeteerError);
 }
@@ -87,7 +87,7 @@ export async function createFinWindow(executionTarget: Identity, windowOptions: 
 }
 
 export async function addContextListener(executionTarget: Identity): Promise<RemoteContextListener> {
-    const id = await ofBrowser.executeOnWindow(executionTarget, function(this: TestWindowContext): number {
+    const id = await ofBrowser.executeOnWindow(executionTarget, function (this: TestWindowContext): number {
         const listenerID = this.contextListeners.length;
         this.contextListeners[listenerID] = this.fdc3.addContextListener((context) => {
             this.receivedContexts.push({listenerID, context});
@@ -102,7 +102,7 @@ export async function addContextListener(executionTarget: Identity): Promise<Rem
 
 export async function addIntentListener(executionTarget: Identity, intent: IntentType, listener?: (context: Context) => any): Promise<RemoteIntentListener> {
     const remoteFn = listener ? await ofBrowser.getOrMountRemoteFunction(executionTarget, listener) : undefined;
-    const id = await ofBrowser.executeOnWindow(executionTarget, function(this: TestWindowContext, intentRemote: IntentType, listenerRemote?: any): number {
+    const id = await ofBrowser.executeOnWindow(executionTarget, function (this: TestWindowContext, intentRemote: IntentType, listenerRemote?: any): number {
         if (this.intentListeners[intentRemote] === undefined) {
             this.intentListeners[intentRemote] = [];
         }
@@ -110,9 +110,11 @@ export async function addIntentListener(executionTarget: Identity, intent: Inten
         this.intentListeners[intentRemote][listenerID] = this.fdc3.addIntentListener(intentRemote, async (context) => {
             this.receivedIntents.push({listenerID, intent: intentRemote, context});
             // Catch and throw so it rejects correctly client side
-            const result = listenerRemote ? await listenerRemote(context).catch(() => {
-                throw new Error();
-            }) : null;
+            const result = listenerRemote
+                ? await listenerRemote(context).catch(() => {
+                    throw new Error();
+                })
+                : null;
             return result;
         });
         return listenerID;
@@ -344,8 +346,8 @@ function createRemoteIntentListener(
         },
         getReceivedContexts: async (): Promise<Context[]> => {
             if (!listener || !('mock' in listener)) {
-                return ofBrowser.executeOnWindow(executionTarget, function(this: TestWindowContext, remoteIntent: IntentType, remoteId: number): Context[] {
-                    return this.receivedIntents.filter(entry => entry.listenerID === id && entry.intent === intent).map(entry => entry.context);
+                return ofBrowser.executeOnWindow(executionTarget, function (this: TestWindowContext, remoteIntent: IntentType, remoteId: number): Context[] {
+                    return this.receivedIntents.filter((entry) => entry.listenerID === id && entry.intent === intent).map((entry) => entry.context);
                 }, intent, id);
             }
             return (listener as jest.Mock<any, Context[]>).mock.calls.reduce((prev, current) => {

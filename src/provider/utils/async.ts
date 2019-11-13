@@ -115,7 +115,7 @@ export async function raceUntilTrue<T>(items: T[], predicate: (v?: T) => boolean
     };
 
     // Wrap `item` incase it is not a Promise
-    const racePromises: Promise<T | void>[] = items.map(async item => {
+    const racePromises: Promise<T | void>[] = items.map(async (item) => {
         return Promise.resolve(item)
             .then(handleResolve, handleReject)
             .then(completeCheck);

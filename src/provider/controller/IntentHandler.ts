@@ -9,10 +9,8 @@ import {APIToClientTopic, ReceiveIntentPayload} from '../../client/internal';
 import {APIHandler} from '../APIHandler';
 import {raceUntilTrue, withTimeout} from '../utils/async';
 import {Timeouts} from '../constants';
-import {Environment} from '../model/Environment';
 
 import {ResolverResult, ResolverHandlerBinding} from './ResolverHandler';
-import {AppWindow} from '../model/AppWindow';
 
 @injectable()
 export class IntentHandler {

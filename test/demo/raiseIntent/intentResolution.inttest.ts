@@ -2,15 +2,14 @@ import 'jest';
 import 'reflect-metadata';
 
 import {Identity} from 'hadouken-js-adapter';
-import {_Window} from 'hadouken-js-adapter/out/types/src/api/window/window';
 
-import {Intent} from '../../../src/client/intents';
 import * as fdc3Remote from '../utils/fdc3RemoteExecution';
 import {TestAppData, setupTeardown, setupOpenDirectoryAppBookends, DirectoryTestAppData} from '../utils/common';
 import {testManagerIdentity, testAppInDirectory2, testAppUrl} from '../constants';
 import {IntentResolution, ResolveError} from '../../../src/client/main';
 import {delay} from '../utils/delay';
 import {Timeouts} from '../../../src/provider/constants';
+import {Intent} from '../../../src/provider/intents';
 
 /**
  * Intent registered by `testAppWithPreregisteredListeners1` right after opening
@@ -137,7 +136,7 @@ describe('Intent resolution', () => {
 
             test('And there is 1 intent handler on a child window that throws after app maturity, an FDC3 IntentHandlerException is thrown', async () => {
                 await fdc3Remote.addIntentListener(children[0], preregisteredIntent.type, errorFn);
-                await delay(Timeouts.ADD_INTENT_LISTENER);
+                await delay(Timeouts.APP_MATURITY);
                 const resolution = raiseIntent(preregisteredIntent, appHandlingIntent);
                 await expect(resolution).toThrowFDC3Error(ResolveError.IntentHandlerException);
             });

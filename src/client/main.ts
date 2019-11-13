@@ -2,11 +2,11 @@
  * @module Index
  */
 
-
 /**
  * Main entry point
  */
 import {raceUntilTrue} from '../provider/utils/async';
+
 import {tryServiceDispatch, getServicePromise, getEventRouter, eventEmitter} from './connection';
 import {Context} from './context';
 import {Application, AppName} from './directory';
@@ -421,12 +421,12 @@ function deserializeChannelChangedEvent(eventTransport: Transport<ChannelChanged
 }
 
 if (typeof fin !== 'undefined') {
-    getServicePromise().then(channelClient => {
+    getServicePromise().then((channelClient) => {
         channelClient.register(APIToClientTopic.RECEIVE_INTENT, async (payload: RaiseIntentPayload) => {
             const result = await raceUntilTrue(
                 intentListeners
-                    .filter(listener => listener.intent === payload.intent)
-                    .map(async listener => listener.handler(payload.context)),
+                    .filter((listener) => listener.intent === payload.intent)
+                    .map(async (listener) => listener.handler(payload.context)),
                 (value) => value !== undefined
             );
             return result;
