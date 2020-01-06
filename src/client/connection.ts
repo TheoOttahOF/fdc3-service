@@ -46,7 +46,18 @@ export function getEventRouter(): EventRouter<Events> {
 let channelPromise: Promise<ChannelClient> | null = null;
 const hasDOMContentLoaded = new DeferredPromise<void>();
 
-document.addEventListener('DOMContentLoaded', () => {
+declare const global: NodeJS.Global & {document: Document};
+
+// eslint-disable-next-line
+if (global.document !== undefined) {
+    document.addEventListener('DOMContentLoaded', () => {
+        initialize();
+    });
+} else {
+    initialize();
+}
+
+function initialize() {
     hasDOMContentLoaded.resolve();
     if (typeof fin !== 'undefined') {
         getServicePromise();
@@ -60,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             channelPromise = null;
         }
     });
-});
+}
 
 export async function getServicePromise(): Promise<ChannelClient> {
     await hasDOMContentLoaded.promise;

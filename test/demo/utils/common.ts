@@ -195,3 +195,12 @@ async function isServiceClear(): Promise<boolean> {
         }, testManagerIdentity
     );
 }
+
+export async function reloadProvider(): Promise<void> {
+    const page = await fdc3Remote.ofBrowser.getPage(SERVICE_IDENTITY);
+    if (!page) {
+        throw new Error('Unable to get the provider page');
+    }
+    page.reload();
+    page.waitForNavigation({timeout: Duration.PAGE_NAVIGATE});
+}
