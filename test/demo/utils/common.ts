@@ -201,6 +201,6 @@ export async function reloadProvider(): Promise<void> {
     if (!page) {
         throw new Error('Unable to get the provider page');
     }
-    page.reload();
-    page.waitForNavigation({timeout: Duration.PAGE_NAVIGATE});
+    await page.reload();
+    await delay(Duration.PAGE_RELOAD);
 }
