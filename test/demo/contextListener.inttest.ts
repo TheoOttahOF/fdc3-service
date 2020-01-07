@@ -192,7 +192,7 @@ window, the listener is triggered exactly once with the correct context', async 
         });
     });
 
-    describe.only('When the provider is reloaded', () => {
+    describe('When the provider is reloaded', () => {
         let listener: fdc3Remote.RemoteContextListener;
         setupOpenDirectoryAppBookends(testAppInDirectory1);
 
@@ -200,7 +200,7 @@ window, the listener is triggered exactly once with the correct context', async 
             listener = await fdc3Remote.addContextListener(testAppInDirectory1);
         });
 
-        test('Contexts are recieved', async () => {
+        test('Contexts listeners are readded and contexts are recieved', async () => {
             await reloadProvider();
             await fdc3Remote.broadcast(testManagerIdentity, validContext);
             await expect(listener).toHaveReceivedContexts([validContext]);
