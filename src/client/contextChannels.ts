@@ -24,7 +24,7 @@ import {Identity} from 'openfin/_v2/main';
 
 import {parseIdentity, parseContext, validateEnvironment, parseChannelId, parseAppChannelName} from './validation';
 import {tryServiceDispatch, getEventRouter, getServicePromise} from './connection';
-import {APIFromClientTopic, ChannelTransport, APIToClientTopic, ChannelReceiveContextPayload, SystemChannelTransport, ChannelEvents, AppChannelTransport, invokeListeners, OpenFinChannelConnectionEvent, getServiceChannel, getServiceIdentity} from './internal';
+import {APIFromClientTopic, ChannelTransport, APIToClientTopic, ChannelReceiveContextPayload, SystemChannelTransport, ChannelEvents, AppChannelTransport, invokeListeners, OpenFinChannelConnectionEvent, getServiceChannel, getServiceIdentity, registerOnChannelConnect} from './internal';
 import {Context} from './context';
 import {ContextListener} from './main';
 import {Transport} from './EventRouter';
@@ -573,6 +573,7 @@ function deserializeChannelChangedEvent(eventTransport: Transport<ChannelChanged
     const channel = eventTransport.channel ? getChannelObject(eventTransport.channel) : null;
     const previousChannel = eventTransport.previousChannel ? getChannelObject(eventTransport.previousChannel) : null;
 
+    console.log(eventTransport);
     if (fin.Window.me.name === identity.name && fin.Window.me.uuid === identity.uuid) {
         if (previousChannel) {
             currentChannels.delete(previousChannel.id);
@@ -586,18 +587,23 @@ function deserializeChannelChangedEvent(eventTransport: Transport<ChannelChanged
 }
 
 if (typeof fin !== 'undefined') {
-    initialize();
-
-    fin.InterApplicationBus.Channel.onChannelConnect((event: OpenFinChannelConnectionEvent) => {
-        const {uuid, name, channelName} = event;
-        if (uuid === getServiceIdentity().uuid && name === getServiceIdentity().name && channelName === getServiceChannel()) {
-            initialize();
-        }
+    const eventHandler = getEventRouter();
+    eventHandler.registerEmitterProvider('channel', (channelId: ChannelId) => {
+        return channelEventEmitters[channelId];
     });
+
+    eventHandler.registerDeserializer('window-added', deserializeWindowAddedEvent);
+    eventHandler.registerDeserializer('window-removed', deserializeWindowRemovedEvent);
+    eventHandler.registerDeserializer('channel-changed', deserializeChannelChangedEvent);
+
+    initialize().then(() => {
+    });
+    registerOnChannelConnect(initialize);
 }
 
-function initialize() {
-    getServicePromise().then((channelClient) => {
+function initialize(): Promise<void> {
+    return getServicePromise().then((channelClient) => {
+        console.log('Init');
         channelClient.register(APIToClientTopic.CHANNEL_RECEIVE_CONTEXT, async (payload: ChannelReceiveContextPayload) => {
             await invokeListeners(
                 channelContextListeners.filter((listener) => listener.channel.id === payload.channel),
@@ -606,16 +612,6 @@ function initialize() {
                 () => new Error('All channel context handlers failed')
             );
         });
-
-        const eventHandler = getEventRouter();
-
-        eventHandler.registerEmitterProvider('channel', (channelId: ChannelId) => {
-            return channelEventEmitters[channelId];
-        });
-
-        eventHandler.registerDeserializer('window-added', deserializeWindowAddedEvent);
-        eventHandler.registerDeserializer('window-removed', deserializeWindowRemovedEvent);
-        eventHandler.registerDeserializer('channel-changed', deserializeChannelChangedEvent);
 
         rehydrate();
     }, (reason) => {
@@ -627,6 +623,7 @@ async function rehydrate(): Promise<void> {
     const joinChannels = [...currentChannels.values()].map(async (id) => {
         return (await getChannelById(id)).join();
     });
+    console.log('Rehydrate', currentChannels);
 
     const tempContextListeners = [...channelContextListeners];
     channelContextListeners.splice(0, channelContextListeners.length);

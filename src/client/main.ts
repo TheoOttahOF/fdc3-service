@@ -8,7 +8,7 @@
 import {tryServiceDispatch, getServicePromise, getEventRouter, eventEmitter} from './connection';
 import {Context} from './context';
 import {Application, AppName} from './directory';
-import {APIFromClientTopic, APIToClientTopic, RaiseIntentPayload, ReceiveContextPayload, MainEvents, Events, invokeListeners, OpenFinChannelConnectionEvent, getServiceChannel, getServiceIdentity} from './internal';
+import {APIFromClientTopic, APIToClientTopic, RaiseIntentPayload, ReceiveContextPayload, MainEvents, Events, invokeListeners, OpenFinChannelConnectionEvent, getServiceChannel, getServiceIdentity, registerOnChannelConnect} from './internal';
 import {ChannelChangedEvent, ChannelContextListener} from './contextChannels';
 import {parseContext, validateEnvironment} from './validation';
 import {Transport, Targeted} from './EventRouter';
@@ -417,18 +417,16 @@ function hasIntentListener(intent: string): boolean {
 }
 
 if (typeof fin !== 'undefined') {
-    initialize();
-
-    fin.InterApplicationBus.Channel.onChannelConnect((event: OpenFinChannelConnectionEvent) => {
-        const {uuid, name, channelName} = event;
-        if (uuid === getServiceIdentity().uuid && name === getServiceIdentity().name && channelName === getServiceChannel()) {
-            initialize();
-        }
+    const eventHandler = getEventRouter();
+    eventHandler.registerEmitterProvider('main', () => eventEmitter);
+    initialize().then(() => {
+        console.log('Registering');
+        registerOnChannelConnect(initialize);
     });
 }
 
-function initialize() {
-    getServicePromise().then((channelClient) => {
+function initialize(): Promise<void> {
+    return getServicePromise().then((channelClient) => {
         channelClient.register(APIToClientTopic.RECEIVE_INTENT, async (payload: RaiseIntentPayload) => {
             const result = await invokeListeners(
                 intentListeners.filter((listener) => payload.intent === listener.intent),
@@ -448,11 +446,9 @@ function initialize() {
             );
         });
 
-        const eventHandler = getEventRouter();
-
         channelClient.register('event', (eventTransport: Targeted<Transport<Events>>) => {
             try {
-                eventHandler.dispatchEvent(eventTransport);
+                getEventRouter().dispatchEvent(eventTransport);
             } catch (e) {
                 console.warn(`Error thrown dispatching ${eventTransport.type} event, rethrowing error. Error message: ${e.message}`);
                 throw e;
@@ -460,8 +456,6 @@ function initialize() {
         });
 
         rehydrate();
-
-        eventHandler.registerEmitterProvider('main', () => eventEmitter);
     }, (reason) => {
         console.warn('Unable to register client Context and Intent handlers. getServicePromise() rejected with reason:', reason);
     });
