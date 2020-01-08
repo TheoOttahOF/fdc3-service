@@ -41,10 +41,9 @@ export function ChartsApp(props: AppProps): React.ReactElement {
         });
 
         const contextListener = fdc3.addContextListener((context: Context): void => {
-            throw new Error('Test');
-            // if (context.type === 'fdc3.instrument') {
-            //     handleIntent(context as InstrumentContext);
-            // }
+            if (context.type === 'fdc3.instrument') {
+                handleIntent(context as InstrumentContext);
+            }
         });
 
         return function cleanUp() {

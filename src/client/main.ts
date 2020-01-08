@@ -8,7 +8,7 @@
 import {tryServiceDispatch, getServicePromise, getEventRouter, eventEmitter} from './connection';
 import {Context} from './context';
 import {Application, AppName} from './directory';
-import {APIFromClientTopic, APIToClientTopic, RaiseIntentPayload, ReceiveContextPayload, MainEvents, Events, invokeListeners, OpenFinChannelConnectionEvent, getServiceChannel, getServiceIdentity, registerOnChannelConnect} from './internal';
+import {APIFromClientTopic, APIToClientTopic, RaiseIntentPayload, ReceiveContextPayload, MainEvents, Events, invokeListeners, registerOnChannelConnect} from './internal';
 import {ChannelChangedEvent, ChannelContextListener} from './contextChannels';
 import {parseContext, validateEnvironment} from './validation';
 import {Transport, Targeted} from './EventRouter';
@@ -419,10 +419,8 @@ function hasIntentListener(intent: string): boolean {
 if (typeof fin !== 'undefined') {
     const eventHandler = getEventRouter();
     eventHandler.registerEmitterProvider('main', () => eventEmitter);
-    initialize().then(() => {
-        console.log('Registering');
-        registerOnChannelConnect(initialize);
-    });
+    registerOnChannelConnect(initialize);
+    initialize();
 }
 
 function initialize(): Promise<void> {

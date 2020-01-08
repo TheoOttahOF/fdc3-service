@@ -24,7 +24,7 @@ import {Identity} from 'openfin/_v2/main';
 
 import {parseIdentity, parseContext, validateEnvironment, parseChannelId, parseAppChannelName} from './validation';
 import {tryServiceDispatch, getEventRouter, getServicePromise} from './connection';
-import {APIFromClientTopic, ChannelTransport, APIToClientTopic, ChannelReceiveContextPayload, SystemChannelTransport, ChannelEvents, AppChannelTransport, invokeListeners, OpenFinChannelConnectionEvent, getServiceChannel, getServiceIdentity, registerOnChannelConnect} from './internal';
+import {APIFromClientTopic, ChannelTransport, APIToClientTopic, ChannelReceiveContextPayload, SystemChannelTransport, ChannelEvents, AppChannelTransport, invokeListeners, registerOnChannelConnect} from './internal';
 import {Context} from './context';
 import {ContextListener} from './main';
 import {Transport} from './EventRouter';
@@ -564,8 +564,8 @@ function deserializeWindowRemovedEvent(eventTransport: Transport<ChannelWindowRe
     return {type: 'window-removed', identity, channel, previousChannel};
 }
 
-// Keep track of channels currently in so they can be rejoined on disconnect
-const currentChannels = new Set<string>();
+// Keep track of the channel the client is in so it can be rejoined on disconnect
+let currentChannel: DefaultChannel | SystemChannel | AppChannel | null = null;
 
 function deserializeChannelChangedEvent(eventTransport: Transport<ChannelChangedEvent>): ChannelChangedEvent {
     const type = eventTransport.type;
@@ -575,12 +575,7 @@ function deserializeChannelChangedEvent(eventTransport: Transport<ChannelChanged
 
     console.log(eventTransport);
     if (fin.Window.me.name === identity.name && fin.Window.me.uuid === identity.uuid) {
-        if (previousChannel) {
-            currentChannels.delete(previousChannel.id);
-        }
-        if (channel) {
-            currentChannels.add(channel.id);
-        }
+        currentChannel = channel;
     }
 
     return {type, identity, channel, previousChannel};
@@ -597,8 +592,8 @@ if (typeof fin !== 'undefined') {
     eventHandler.registerDeserializer('channel-changed', deserializeChannelChangedEvent);
 
     initialize().then(() => {
+        registerOnChannelConnect(initialize);
     });
-    registerOnChannelConnect(initialize);
 }
 
 function initialize(): Promise<void> {
@@ -620,10 +615,16 @@ function initialize(): Promise<void> {
 }
 
 async function rehydrate(): Promise<void> {
-    const joinChannels = [...currentChannels.values()].map(async (id) => {
-        return (await getChannelById(id)).join();
-    });
-    console.log('Rehydrate', currentChannels);
+    let channelToJoin: DefaultChannel | SystemChannel | AppChannel | null = currentChannel;
+    // Check if the client reloaded and was already in a channel
+    console.log('Current channel', currentChannel);
+    if (!channelToJoin) {
+        const previousChannel = await getCurrentChannel();
+        channelToJoin = previousChannel ? previousChannel : defaultChannel;
+    }
+    if (channelToJoin.type === 'app') {
+        channelToJoin = await getOrCreateAppChannel(channelToJoin.name);
+    }
 
     const tempContextListeners = [...channelContextListeners];
     channelContextListeners.splice(0, channelContextListeners.length);
@@ -632,5 +633,7 @@ async function rehydrate(): Promise<void> {
         return channel.addContextListener(handler);
     });
 
-    await Promise.all(joinChannels);
+    await channelToJoin.join();
+    currentChannel = channelToJoin;
+    console.log('Rehydrate', currentChannel);
 }
