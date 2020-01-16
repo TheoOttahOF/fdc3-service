@@ -51,15 +51,16 @@ if (typeof fin !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
         hasDOMContentLoaded.resolve();
     });
+    if (getServiceIdentity().name !== fin.Window.me.name && getServiceIdentity().uuid !== fin.Window.me.uuid) {
+        getServicePromise();
 
-    getServicePromise();
-
-    fin.InterApplicationBus.Channel.onChannelDisconnect((event: OpenFinChannelConnectionEvent) => {
-        const {uuid, name, channelName} = event;
-        if (uuid === getServiceIdentity().uuid && name === getServiceIdentity().name && channelName === getServiceChannel()) {
-            channelPromise = null;
-        }
-    });
+        fin.InterApplicationBus.Channel.onChannelDisconnect((event: OpenFinChannelConnectionEvent) => {
+            const {uuid, name, channelName} = event;
+            if (uuid === getServiceIdentity().uuid && name === getServiceIdentity().name && channelName === getServiceChannel()) {
+                channelPromise = null;
+            }
+        });
+    }
 }
 
 export async function getServicePromise(): Promise<ChannelClient> {
@@ -82,8 +83,6 @@ export async function getServicePromise(): Promise<ChannelClient> {
                         wait: true,
                         payload: {version: PACKAGE_VERSION}
                     }).then((channel: ChannelClient) => {
-                        // @ts-ignore Timestamp channel creation time for debugging
-                        channel['timestamp'] = (new Date()).toUTCString();
                         // Register service listeners
                         channel.register('WARN', (payload: unknown) => console.warn(payload));  // tslint:disable-line:no-any
                         // Any unregistered action will simply return false

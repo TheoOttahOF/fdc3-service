@@ -24,7 +24,7 @@ import {Identity} from 'openfin/_v2/main';
 
 import {parseIdentity, parseContext, validateEnvironment, parseChannelId, parseAppChannelName} from './validation';
 import {tryServiceDispatch, getEventRouter, getServicePromise} from './connection';
-import {APIFromClientTopic, ChannelTransport, APIToClientTopic, ChannelReceiveContextPayload, SystemChannelTransport, ChannelEvents, AppChannelTransport, invokeListeners, registerOnChannelConnect} from './internal';
+import {APIFromClientTopic, ChannelTransport, APIToClientTopic, ChannelReceiveContextPayload, SystemChannelTransport, ChannelEvents, AppChannelTransport, invokeListeners, registerOnChannelConnect, getServiceIdentity} from './internal';
 import {Context} from './context';
 import {ContextListener} from './main';
 import {Transport} from './EventRouter';
@@ -582,33 +582,38 @@ function deserializeChannelChangedEvent(eventTransport: Transport<ChannelChanged
 }
 
 if (typeof fin !== 'undefined') {
-    const eventHandler = getEventRouter();
-    eventHandler.registerEmitterProvider('channel', (channelId: ChannelId) => {
-        return channelEventEmitters[channelId];
-    });
+    if (getServiceIdentity().name !== fin.Window.me.name && getServiceIdentity().uuid !== fin.Window.me.uuid) {
+        const eventHandler = getEventRouter();
+        eventHandler.registerEmitterProvider('channel', (channelId: ChannelId) => {
+            return channelEventEmitters[channelId];
+        });
 
-    eventHandler.registerDeserializer('window-added', deserializeWindowAddedEvent);
-    eventHandler.registerDeserializer('window-removed', deserializeWindowRemovedEvent);
-    eventHandler.registerDeserializer('channel-changed', deserializeChannelChangedEvent);
+        eventHandler.registerDeserializer('channel-changed', deserializeChannelChangedEvent);
+        eventHandler.registerDeserializer('window-added', deserializeWindowAddedEvent);
+        eventHandler.registerDeserializer('window-removed', deserializeWindowRemovedEvent);
 
-    initialize().then(() => {
-        registerOnChannelConnect(initialize);
-    });
+        initialize().then(() => {
+            registerOnChannelConnect(initialize);
+        });
+    }
 }
 
 function initialize(): Promise<void> {
-    return getServicePromise().then((channelClient) => {
-        console.log('Init');
-        channelClient.register(APIToClientTopic.CHANNEL_RECEIVE_CONTEXT, async (payload: ChannelReceiveContextPayload) => {
-            await invokeListeners(
-                channelContextListeners.filter((listener) => listener.channel.id === payload.channel),
-                payload.context,
-                (e) => console.warn(`Error thrown by channel context handler, swallowing error. Error message: ${e.message}`),
-                () => new Error('All channel context handlers failed')
-            );
-        });
+    return getServicePromise().then(async (channelClient) => {
+        try {
+            channelClient.register(APIToClientTopic.CHANNEL_RECEIVE_CONTEXT, async (payload: ChannelReceiveContextPayload) => {
+                await invokeListeners(
+                    channelContextListeners.filter((listener) => listener.channel.id === payload.channel),
+                    payload.context,
+                    (e) => console.warn(`Error thrown by channel context handler, swallowing error. Error message: ${e.message}`),
+                    () => new Error('All channel context handlers failed')
+                );
+            });
+        } catch (e) {
+            // Trying to resubscribe to the same channel
+        }
 
-        rehydrate();
+        await rehydrate();
     }, (reason) => {
         console.warn('Unable to register client channel context handlers. getServicePromise() rejected with reason:', reason);
     });
@@ -625,15 +630,8 @@ async function rehydrate(): Promise<void> {
     if (channelToJoin.type === 'app') {
         channelToJoin = await getOrCreateAppChannel(channelToJoin.name);
     }
-
-    const tempContextListeners = [...channelContextListeners];
-    channelContextListeners.splice(0, channelContextListeners.length);
-
-    tempContextListeners.map(({channel, handler}) => {
-        return channel.addContextListener(handler);
-    });
-
     await channelToJoin.join();
+    await Promise.all(channelContextListeners.map(({channel}) => tryServiceDispatch(APIFromClientTopic.CHANNEL_ADD_CONTEXT_LISTENER, {id: channel.id})));
     currentChannel = channelToJoin;
     console.log('Rehydrate', currentChannel);
 }
